@@ -32,6 +32,7 @@ class 遊戲框架 {
     private JFrame 主框架;
     private JLabel 狀態標籤;
     private JLabel 金幣標籤;
+    private JLabel 等級標籤;
     private 玩家 玩家;
     private 敵人 當前敵人;
     private List<盟友> 盟友列表;
@@ -48,6 +49,13 @@ class 遊戲框架 {
     private Timer 戰鬥動畫計時器;
     private int 戰鬥動畫階段;
     private double 戰鬥動畫進度;
+    private String 當前攻擊方式 = "近戰";
+    private double 當前傷害倍率 = 1;
+    private int 盟友攻擊索引;
+    private int 探索事件金幣;
+    private int 最後獲得經驗;
+    private int 最後升級數;
+    private boolean 魔王已擊敗;
 
     public 遊戲框架() {
         this.主框架 = new JFrame("冒險遊戲");
@@ -146,7 +154,14 @@ class 遊戲框架 {
         右側.setOpaque(false);
         狀態標籤.setFont(內文字體);
         狀態標籤.setForeground(柔和文字色);
-        右側.add(狀態標籤);
+        JPanel 玩家資源 = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        玩家資源.setOpaque(false);
+        玩家資源.add(狀態標籤);
+        等級標籤 = new JLabel("Lv. 1");
+        等級標籤.setFont(new Font("微軟正黑體", Font.BOLD, 13));
+        等級標籤.setForeground(new Color(177, 154, 235));
+        玩家資源.add(等級標籤);
+        右側.add(玩家資源);
         金幣標籤 = new JLabel("◈ 50");
         金幣標籤.setFont(new Font("微軟正黑體", Font.BOLD, 15));
         金幣標籤.setForeground(金色);
@@ -214,8 +229,11 @@ class 遊戲框架 {
         JLabel 副標題 = new JLabel("傳說，從踏出安全區的那一刻開始。");
         副標題.setForeground(new Color(194, 201, 218));
         副標題.setFont(new Font("微軟正黑體", Font.PLAIN, 17));
-        JLabel 角色資訊 = new JLabel("  ⚔  " + (玩家 == null ? "等待新冒險者" : 玩家.獲取名稱() + "　·　冒險者")
-                + "　　✦　隊伍 " + 盟友列表.size() + "/5");
+        JLabel 角色資訊 = new JLabel("  ⚔  " + (玩家 == null ? "等待新冒險者" : 玩家.獲取名稱() + "　·　Lv."
+                + 玩家.獲取等級() + "　" + 玩家.獲取武器名稱())
+                + "　　✦　隊伍 " + 盟友列表.size() + "/5"
+                + (玩家 != null && 玩家.獲取等級() >= 玩家.魔王出現等級() && !魔王已擊敗
+                ? "　　☠　魔王的氣息降臨" : ""));
         角色資訊.setForeground(柔和文字色);
         角色資訊.setFont(內文字體);
         眉題.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -290,6 +308,9 @@ class 遊戲框架 {
         if (金幣標籤 != null && 玩家 != null) {
             金幣標籤.setText("◈ " + 玩家.獲取金幣());
         }
+        if (等級標籤 != null && 玩家 != null) {
+            等級標籤.setText("Lv. " + 玩家.獲取等級());
+        }
     }
 
     private void 顯示角色狀態() {
@@ -299,7 +320,10 @@ class 遊戲框架 {
         JLabel 標題 = new JLabel("冒險者檔案");
         標題.setForeground(金色);
         標題.setFont(標題字體);
-        JTextArea 資訊 = new JTextArea("  " + 玩家 + "\n\n  隊伍成員\n  " + 顯示盟友列表());
+        JTextArea 資訊 = new JTextArea("  " + 玩家 + "\n經驗: " + 玩家.獲取經驗() + " / "
+                + 玩家.升級所需經驗() + "\n武器: " + 玩家.獲取武器名稱()
+                + "\n技能: " + 玩家.顯示技能列表() + "\n\n  隊伍成員\n  " + 顯示盟友列表()
+                + "\n魔王: " + (魔王已擊敗 ? "已討伐" : "Lv." + 玩家.魔王出現等級() + "現身"));
         資訊.setEditable(false);
         資訊.setFont(內文字體);
         資訊.setForeground(文字色);
@@ -328,10 +352,19 @@ class 遊戲框架 {
             顯示戰鬥結局(false);
             return;
         }
+        if (玩家.獲取等級() >= 玩家.魔王出現等級() && !魔王已擊敗) {
+            當前敵人 = new 敵人("魔王・夜燼", 260 + 玩家.獲取等級() * 18,
+                    23 + 玩家.獲取等級() * 2, 300, true);
+            音效.播放音效("遭遇");
+            顯示探索事件("終焉之門", "大地震顫，魔王・夜燼現身了！這將是你最艱難的一戰。",
+                    "enemy", new Color(195, 91, 128), () -> 戰鬥(當前敵人));
+            return;
+        }
         int 事件 = 隨機數.nextInt(4);
         switch (事件) {
             case 0:
                 int 金幣 = 隨機數.nextInt(50) + 1;
+                探索事件金幣 = 金幣;
                 音效.播放音效("寶箱");
                 顯示探索事件("遺忘的寶箱", "你在古老遺跡中發現寶箱，取得 " + 金幣 + " 枚金幣。",
                         "treasure", 金色, () -> {
@@ -345,7 +378,7 @@ class 遊戲框架 {
                 當前敵人 = 隨機生成敵人();
                 音效.播放音效("遭遇");
                 顯示探索事件("危險正在逼近", "迷霧中傳來低吼——" + 當前敵人.獲取名稱() + " 擋住了去路！",
-                        "enemy", new Color(231, 91, 105), () -> 戰鬥(當前敵人));
+                            "enemy", new Color(231, 91, 105), () -> 戰鬥(當前敵人));
                 break;
             case 2:
                 音效.播放音效("微風");
@@ -358,11 +391,11 @@ class 遊戲框架 {
             case 3:
                 if (盟友列表.size() < 5) {
                     盟友 新盟友 = 隨機生成盟友();
-                    盟友列表.add(新盟友);
                     音效.播放音效("盟友");
                     顯示探索事件("新的同伴", 新盟友.獲取名稱() + " 加入了你的隊伍！隊伍現在有 "
-                                    + 盟友列表.size() + " 位夥伴。",
+                                    + (盟友列表.size() + 1) + " 位夥伴。",
                             "ally", new Color(111, 204, 165), () -> {
+                                盟友列表.add(新盟友);
                                 更新主畫面資訊();
                                 初始化();
                                 更新狀態("你遇到了一位盟友 " + 新盟友.獲取名稱() + "，加入你的隊伍！");
@@ -426,7 +459,7 @@ class 遊戲框架 {
             if ("enemy".equals(類型) && 秒數 >= 1.65 && 已完成.compareAndSet(false, true)) {
                 停止場景動畫();
                 完成動作.run();
-            } else if (!"enemy".equals(類型) && 秒數 >= 0.9) {
+            } else if (!"enemy".equals(類型) && 秒數 >= ("ally".equals(類型) ? 1.5 : 0.9)) {
                 繼續按鈕.setEnabled(true);
             }
         });
@@ -485,22 +518,47 @@ class 遊戲框架 {
                     g2.setColor(new Color(255, 230, 150));
                     g2.fillOval(cx - 4, cy + 10, 8, 8);
                     for (int i = 0; i < 10; i++) {
-                        double a = t * 1.7 + i * Math.PI / 5;
-                        int sx = (int) (cx + Math.cos(a) * (112 + (i % 3) * 9));
-                        int sy = (int) (cy + Math.sin(a) * (82 + (i % 3) * 8));
-                        g2.fillOval(sx - 3, sy - 3, 6, 6);
+                        double phase = (t * 1.15 + i * 0.19) % 1.8;
+                        double side = Math.sin(i * 2.4) * 92;
+                        int sx = (int) (cx + side + Math.sin(phase * 2.7 + i) * 15);
+                        int sy = (int) (cy + 18 - phase * 100);
+                        int size = 8 + (i % 3);
+                        g2.setColor(new Color(255, 223 - (i % 3) * 12, 118));
+                        g2.fillOval(sx - size / 2, sy - size / 2, size, size);
+                        g2.setColor(new Color(255, 247, 195));
+                        g2.drawLine(sx, sy - size / 2 + 1, sx, sy + size / 2 - 1);
                     }
+                    g2.setColor(金色);
+                    g2.setFont(new Font("微軟正黑體", Font.BOLD, 18));
+                    String 獎勵文字 = "+" + 探索事件金幣 + " 金幣";
+                    FontMetrics fm = g2.getFontMetrics();
+                    g2.drawString(獎勵文字, cx - fm.stringWidth(獎勵文字) / 2, cy - 92);
                 } else if ("ally".equals(類型)) {
-                    g2.fillOval(cx - 28, cy - 56, 56, 56);
-                    g2.fillRoundRect(cx - 43, cy + 2, 86, 75, 28, 28);
+                    double 入場 = Math.min(1, (t % 2.4) / 1.1);
+                    int 角色X = (int) (cx + (1 - 入場) * 190);
+                    int 跳躍 = (int) (Math.abs(Math.sin(t * 4)) * 12);
+                    g2.setColor(new Color(15, 20, 31));
+                    g2.fillPolygon(new int[]{角色X - 30, 角色X - 45, 角色X - 25, 角色X + 28, 角色X + 42},
+                            new int[]{cy + 2, cy + 68, cy + 82, cy + 78, cy + 28}, 5);
+                    g2.setColor(強調色);
+                    g2.fillRoundRect(角色X - 36, cy - 12 - 跳躍, 72, 81, 26, 28);
+                    g2.setColor(new Color(226, 190, 151));
+                    g2.fillOval(角色X - 28, cy - 67 - 跳躍, 56, 55);
+                    g2.setColor(new Color(62, 48, 48));
+                    g2.fillArc(角色X - 29, cy - 72 - 跳躍, 58, 34, 0, 180);
                     g2.setColor(文字色);
-                    g2.fillOval(cx - 17, cy - 34, 6, 7);
-                    g2.fillOval(cx + 11, cy - 34, 6, 7);
+                    g2.fillOval(角色X - 16, cy - 42 - 跳躍, 6, 7);
+                    g2.fillOval(角色X + 10, cy - 42 - 跳躍, 6, 7);
+                    g2.setColor(new Color(226, 190, 151));
+                    int 揮手Y = (int) (cy - 2 - 跳躍 + Math.sin(t * 8) * 14);
+                    g2.setStroke(new BasicStroke(8, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                    g2.drawLine(角色X + 26, cy + 12 - 跳躍, 角色X + 47, 揮手Y - 38);
+                    g2.fillOval(角色X + 41, 揮手Y - 45, 13, 13);
                     g2.setColor(new Color(255, 230, 150));
                     for (int i = 0; i < 8; i++) {
                         double a = t + i * Math.PI / 4;
-                        int sx = (int) (cx + Math.cos(a) * 112);
-                        int sy = (int) (cy + Math.sin(a) * 105);
+                        int sx = (int) (角色X + Math.cos(a) * 72);
+                        int sy = (int) (cy - 18 + Math.sin(a) * 85 - 跳躍);
                         g2.fillOval(sx - 3, sy - 3, 6, 6);
                     }
                 } else if ("enemy".equals(類型)) {
@@ -560,59 +618,144 @@ class 遊戲框架 {
     }
 
     private void 打開商店() {
-        Object[] 選項 = {
-                "♥  生命藥水　　恢復 20 點生命　 ·　10 金幣",
-                "⚔  鍛造武器　　攻擊力 +5　 ·　20 金幣",
-                "⬟  守護盾牌　　防禦力 +3　 ·　15 金幣",
-                "離開商會"
-        };
-        int 選擇 = JOptionPane.showOptionDialog(主框架,
-                "  ◈　你的金幣：" + 玩家.獲取金幣() + "\n\n  選擇一項補給，準備好再出發。",
-                "補給商會", JOptionPane.DEFAULT_OPTION, JOptionPane.PLAIN_MESSAGE, null, 選項, 選項[3]);
-        switch (選擇) {
-            case 0:
-                if (玩家.獲取金幣() >= 10) {
-                    玩家.增加生命(20);
-                    玩家.增加金幣(-10);
-                    更新狀態("你購買了一瓶生命藥水，恢復了20點生命值。");
-                } else {
-                    更新狀態("金幣不足！");
-                }
+        JDialog 商店視窗 = new JDialog(主框架, "補給商會", true);
+        商店視窗.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+        JPanel 根面板 = new JPanel(new BorderLayout(0, 16));
+        根面板.setBackground(背景色);
+        根面板.setBorder(new EmptyBorder(20, 22, 18, 22));
+
+        JPanel 標題列 = new JPanel(new BorderLayout());
+        標題列.setOpaque(false);
+        JLabel 標題 = new JLabel("<html><span style='color:#f5be5b'>⚒　邊境補給商會</span>"
+                + "<br><span style='color:#9aa5bb;font-size:12px'>鍛造傳奇武器，為遠征做好準備</span></html>");
+        標題.setFont(標題字體);
+        標題列.add(標題, BorderLayout.WEST);
+        JLabel 金幣 = new JLabel("◈ " + 玩家.獲取金幣() + " 金幣");
+        金幣.setForeground(金色);
+        金幣.setFont(new Font("微軟正黑體", Font.BOLD, 16));
+        標題列.add(金幣, BorderLayout.EAST);
+        根面板.add(標題列, BorderLayout.NORTH);
+
+        JPanel 商品列表 = new JPanel(new GridLayout(0, 2, 12, 12));
+        商品列表.setOpaque(false);
+        JLabel 提示 = new JLabel("選擇商品購買。武器購買後立即裝備，部分商品需達到指定等級。");
+        提示.setForeground(柔和文字色);
+        提示.setFont(new Font("微軟正黑體", Font.PLAIN, 12));
+
+        商品列表.add(建立商店商品("♥　生命藥水", "恢復 35 點生命", "30 金幣", new Color(90, 202, 151),
+                () -> 購買商店商品("potion", 商店視窗, 金幣, 提示)));
+        商品列表.add(建立商店商品("⚔　騎士長劍", "攻擊力 +6　·　近戰", "75 金幣", new Color(223, 180, 110),
+                () -> 購買商店商品("sword", 商店視窗, 金幣, 提示)));
+        商品列表.add(建立商店商品("✹　燼火巨刃", "攻擊力 +12　·　近戰", "145 金幣", new Color(236, 119, 86),
+                () -> 購買商店商品("greatsword", 商店視窗, 金幣, 提示)));
+        商品列表.add(建立商店商品("➶　月影長弓", "攻擊力 +9　·　解鎖遠程射擊", "155 金幣", new Color(111, 178, 215),
+                () -> 購買商店商品("bow", 商店視窗, 金幣, 提示)));
+        商品列表.add(建立商店商品("✧　星隕法杖", "攻擊力 +16　·　強化遠程攻擊", "260 金幣", new Color(172, 137, 226),
+                () -> 購買商店商品("staff", 商店視窗, 金幣, 提示)));
+        商品列表.add(建立商店商品("⬟　龍鱗護甲", "防禦力 +5", "120 金幣", new Color(105, 179, 157),
+                () -> 購買商店商品("armor", 商店視窗, 金幣, 提示)));
+
+        JScrollPane 商品捲動 = new JScrollPane(商品列表);
+        商品捲動.setBorder(new LineBorder(new Color(48, 57, 78), 1, true));
+        商品捲動.getViewport().setBackground(背景色);
+        商品捲動.getVerticalScrollBar().setUnitIncrement(18);
+        根面板.add(商品捲動, BorderLayout.CENTER);
+        JPanel 底部 = new JPanel(new BorderLayout());
+        底部.setOpaque(false);
+        底部.add(提示, BorderLayout.CENTER);
+        JButton 離開 = 建立戰鬥按鈕("離開商會", new Color(52, 62, 84));
+        離開.addActionListener(e -> 商店視窗.dispose());
+        底部.add(離開, BorderLayout.EAST);
+        根面板.add(底部, BorderLayout.SOUTH);
+        商店視窗.setContentPane(根面板);
+        商店視窗.setSize(760, 560);
+        商店視窗.setMinimumSize(new Dimension(690, 500));
+        商店視窗.setLocationRelativeTo(主框架);
+        商店視窗.setVisible(true);
+        更新主畫面資訊();
+    }
+
+    private JButton 建立商店商品(String 名稱, String 效果, String 價格, Color 強調色, Runnable 購買動作) {
+        JButton 商品 = new JButton("<html><div style='text-align:left;padding:4px'>"
+                + "<span style='font-size:16px;color:" + 色碼(強調色) + "'><b>" + 名稱 + "</b></span><br>"
+                + "<span style='font-size:12px;color:#c4cad8'>" + 效果 + "</span><br>"
+                + "<span style='font-size:12px;color:#f5be5b'>◈　" + 價格 + "</span>"
+                + "</div></html>");
+        商品.setHorizontalAlignment(SwingConstants.LEFT);
+        商品.setBackground(面板色);
+        商品.setFocusPainted(false);
+        商品.setBorder(BorderFactory.createCompoundBorder(new LineBorder(new Color(55, 65, 87), 1, true),
+                new EmptyBorder(12, 14, 12, 14)));
+        商品.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        商品.addActionListener(e -> 購買動作.run());
+        return 商品;
+    }
+
+    private void 購買商店商品(String 商品, JDialog 商店視窗, JLabel 金幣標籤, JLabel 提示) {
+        int 價格;
+        String 結果;
+        switch (商品) {
+            case "potion": 價格 = 30; break;
+            case "sword": 價格 = 75; break;
+            case "greatsword": 價格 = 145; break;
+            case "bow": 價格 = 155; break;
+            case "staff": 價格 = 260; break;
+            case "armor": 價格 = 120; break;
+            default:
+                throw new IllegalArgumentException("未知的商店商品：" + 商品);
+        }
+
+        if (玩家.獲取金幣() < 價格) {
+            提示.setText("金幣不足，還差 " + (價格 - 玩家.獲取金幣()) + " 枚。");
+            return;
+        }
+
+        switch (商品) {
+            case "potion":
+                玩家.增加生命(35);
+                結果 = "生命藥水已使用，恢復生命。";
                 break;
-            case 1:
-                if (玩家.獲取金幣() >= 20) {
-                    玩家.升級攻擊力(5);
-                    玩家.增加金幣(-20);
-                    更新狀態("你的攻擊力提升了5點。");
-                } else {
-                    更新狀態("金幣不足！");
-                }
+            case "sword":
+                玩家.裝備武器("騎士長劍", 6, false);
+                結果 = "已裝備騎士長劍，近戰攻擊力 +6。";
                 break;
-            case 2:
-                if (玩家.獲取金幣() >= 15) {
-                    玩家.增加防禦力(3);
-                    玩家.增加金幣(-15);
-                    更新狀態("你購買了一個防禦盾牌，提升了3點防禦力。");
-                } else {
-                    更新狀態("金幣不足！");
-                }
+            case "greatsword":
+                玩家.裝備武器("燼火巨刃", 12, false);
+                結果 = "已裝備燼火巨刃，近戰攻擊力 +12。";
+                break;
+            case "bow":
+                玩家.裝備武器("月影長弓", 9, true);
+                結果 = "已裝備月影長弓，遠程攻擊力 +9。";
+                break;
+            case "staff":
+                玩家.裝備武器("星隕法杖", 16, true);
+                結果 = "已裝備星隕法杖，遠程攻擊力 +16。";
+                break;
+            case "armor":
+                玩家.增加防禦力(5);
+                結果 = "龍鱗護甲已穿戴，防禦力 +5。";
                 break;
             default:
-                更新狀態("你離開了商店。");
+                throw new IllegalArgumentException("未知的商店商品：" + 商品);
         }
+
+        玩家.增加金幣(-價格);
+        金幣標籤.setText("◈ " + 玩家.獲取金幣() + " 金幣");
         更新主畫面資訊();
+        提示.setText("✦　" + 結果);
+        更新狀態(結果);
     }
 
     private void 戰鬥(敵人 敵人) {
         停止場景動畫();
         停止戰鬥動畫();
-        玩家最大生命 = Math.max(100, 玩家.獲取生命());
+        玩家最大生命 = 玩家.獲取最大生命();
         戰鬥畫面 = new JPanel(new BorderLayout());
         戰鬥畫面.setBackground(背景色);
         戰鬥畫面.setBorder(new EmptyBorder(20, 28, 22, 28));
         JPanel 頂列 = new JPanel(new BorderLayout());
         頂列.setOpaque(false);
-        JLabel 標題 = new JLabel("遭遇戰　/　" + 敵人.獲取名稱());
+        JLabel 標題 = new JLabel((敵人.是否魔王() ? "魔王決戰　/　" : "遭遇戰　/　") + 敵人.獲取名稱());
         標題.setForeground(文字色);
         標題.setFont(標題字體);
         JLabel 金幣 = new JLabel("◈ " + 玩家.獲取金幣() + " 金幣");
@@ -625,9 +768,11 @@ class 遊戲框架 {
         對決狀態.setOpaque(false);
         玩家生命條 = 建立生命條(玩家最大生命, new Color(90, 202, 151));
         敵人生命條 = 建立生命條(Math.max(1, 敵人.獲取生命()), new Color(231, 91, 105));
-        對決狀態.add(建立戰鬥狀態卡("✦　" + 玩家.獲取名稱(), "冒險者　·　防禦 " + 玩家.獲取防禦力(),
+        對決狀態.add(建立戰鬥狀態卡("✦　" + 玩家.獲取名稱() + "　Lv." + 玩家.獲取等級(),
+                玩家.獲取武器名稱() + "　·　防禦 " + 玩家.獲取防禦力() + "　·　盟友 " + 盟友列表.size(),
                 玩家生命條, new Color(90, 202, 151)));
-        對決狀態.add(建立戰鬥狀態卡("☠　" + 敵人.獲取名稱(), "邊境魔物　·　懸賞 " + 敵人.掉落() + " 金幣",
+        對決狀態.add(建立戰鬥狀態卡("☠　" + 敵人.獲取名稱(),
+                敵人.是否魔王() ? "最終魔王　·　懸賞 " + 敵人.掉落() + " 金幣" : "邊境魔物　·　懸賞 " + 敵人.掉落() + " 金幣",
                 敵人生命條, new Color(231, 91, 105)));
 
         戰鬥場景 = 建立戰鬥場景(敵人);
@@ -645,16 +790,39 @@ class 遊戲框架 {
         滾動面板.getViewport().setBackground(new Color(17, 22, 36));
         滾動面板.setPreferredSize(new Dimension(0, 112));
 
-        JPanel 按鈕面板 = new JPanel(new FlowLayout(FlowLayout.CENTER, 14, 0));
+        JPanel 按鈕面板 = new JPanel(new FlowLayout(FlowLayout.CENTER, 7, 0));
         按鈕面板.setOpaque(false);
-        JButton 攻擊按鈕 = 建立戰鬥按鈕("⚔　揮劍攻擊", new Color(164, 77, 78));
+        List<JButton> 行動按鈕 = new ArrayList<>();
+        JButton 近戰按鈕 = 建立戰鬥按鈕("⚔ 近戰", new Color(164, 77, 78));
+        JButton 遠程按鈕 = 建立戰鬥按鈕("➶ 遠程", new Color(70, 111, 153));
         JButton 逃跑按鈕 = 建立戰鬥按鈕("↩　撤退", new Color(52, 62, 84));
-        攻擊按鈕.setEnabled(false);
-        逃跑按鈕.setEnabled(false);
-        按鈕面板.add(攻擊按鈕);
+        行動按鈕.add(近戰按鈕);
+        行動按鈕.add(遠程按鈕);
+        按鈕面板.add(近戰按鈕);
+        按鈕面板.add(遠程按鈕);
+        if (玩家.獲取等級() >= 3) {
+            JButton 烈焰斬按鈕 = 建立戰鬥按鈕("✹ 烈焰斬", new Color(164, 83, 55));
+            行動按鈕.add(烈焰斬按鈕);
+            按鈕面板.add(烈焰斬按鈕);
+            烈焰斬按鈕.addActionListener(e ->
+                    開始戰鬥攻擊(敵人, "烈焰斬", 2.0, 行動按鈕, 逃跑按鈕));
+        }
+        if (玩家.獲取等級() >= 5) {
+            JButton 奧術箭按鈕 = 建立戰鬥按鈕("✧ 奧術箭", new Color(115, 82, 177));
+            行動按鈕.add(奧術箭按鈕);
+            按鈕面板.add(奧術箭按鈕);
+            奧術箭按鈕.addActionListener(e ->
+                    開始戰鬥攻擊(敵人, "奧術箭", 2.4, 行動按鈕, 逃跑按鈕));
+        }
+        for (JButton 行動 : 行動按鈕) {
+            行動.setEnabled(false);
+        }
         按鈕面板.add(逃跑按鈕);
 
-        攻擊按鈕.addActionListener(e -> 開始戰鬥攻擊(敵人, 攻擊按鈕, 逃跑按鈕));
+        近戰按鈕.addActionListener(e ->
+                開始戰鬥攻擊(敵人, "近戰", 1, 行動按鈕, 逃跑按鈕));
+        遠程按鈕.addActionListener(e ->
+                開始戰鬥攻擊(敵人, "遠程", 0.8, 行動按鈕, 逃跑按鈕));
 
         逃跑按鈕.addActionListener(e -> {
             停止戰鬥動畫();
@@ -685,7 +853,7 @@ class 遊戲框架 {
             if (戰鬥動畫進度 >= 1) {
                 停止戰鬥動畫();
                 戰鬥動畫階段 = 0;
-                攻擊按鈕.setEnabled(true);
+                設定戰鬥行動可用(行動按鈕, true);
                 逃跑按鈕.setEnabled(true);
                 戰鬥日誌.append("\n魔物現身！　你的回合。");
             }
@@ -693,65 +861,141 @@ class 遊戲框架 {
         戰鬥動畫計時器.start();
     }
 
-    private void 開始戰鬥攻擊(敵人 敵人, JButton 攻擊按鈕, JButton 逃跑按鈕) {
+    private void 開始戰鬥攻擊(敵人 敵人, String 攻擊方式, double 傷害倍率,
+                            List<JButton> 行動按鈕, JButton 逃跑按鈕) {
         if (戰鬥動畫階段 != 0) {
             return;
         }
-        攻擊按鈕.setEnabled(false);
+        設定戰鬥行動可用(行動按鈕, false);
         逃跑按鈕.setEnabled(false);
-        戰鬥動畫階段 = 1;
+        當前攻擊方式 = 攻擊方式;
+        當前傷害倍率 = 傷害倍率;
+        盟友攻擊索引 = 0;
+        音效.播放音效(攻擊方式.equals("近戰") ? "揮劍"
+                : 攻擊方式.equals("遠程") ? "弓箭" : "魔法");
+        戰鬥日誌.append("\n" + 攻擊方式圖示(攻擊方式) + "　" + 玩家.獲取名稱()
+                + 使用攻擊描述(攻擊方式) + "！");
+        開始戰鬥動畫階段(1, 敵人, 行動按鈕, 逃跑按鈕);
+    }
+
+    private void 開始戰鬥動畫階段(int 階段, 敵人 敵人, List<JButton> 行動按鈕, JButton 逃跑按鈕) {
+        停止戰鬥動畫();
+        戰鬥動畫階段 = 階段;
         戰鬥動畫進度 = 0;
         boolean[] 已造成傷害 = {false};
-        音效.播放音效("揮劍");
-        戰鬥日誌.append("\n⚔　" + 玩家.獲取名稱() + " 衝向敵人，揮出一劍！");
-
         戰鬥動畫計時器 = new Timer(30, e -> {
             戰鬥動畫進度 = Math.min(1, 戰鬥動畫進度 + 0.055);
-            if (!已造成傷害[0] && 戰鬥動畫階段 == 1 && 戰鬥動畫進度 >= 0.48) {
+            double 命中時間 = 階段 == 2 ? 0.55 : 0.48;
+            if (!已造成傷害[0] && 戰鬥動畫進度 >= 命中時間) {
                 已造成傷害[0] = true;
-                int 傷害 = 玩家.攻擊();
-                敵人.受到傷害(傷害);
-                音效.播放音效("命中");
-                戰鬥日誌.append("\n✦　造成 " + 傷害 + " 點傷害！");
+                if (階段 == 1) {
+                    boolean 遠程攻擊 = "遠程".equals(當前攻擊方式) || "奧術箭".equals(當前攻擊方式);
+                    int 傷害 = 玩家.攻擊(遠程攻擊, 當前傷害倍率);
+                    敵人.受到傷害(傷害);
+                    音效.播放音效("命中");
+                    戰鬥日誌.append("\n✦　" + 當前攻擊方式 + "命中，造成 " + 傷害 + " 點傷害！");
+                } else if (階段 == 4) {
+                    盟友 同伴 = 盟友列表.get(盟友攻擊索引);
+                    int 傷害 = 同伴.攻擊() + 玩家.獲取等級() / 2;
+                    敵人.受到傷害(傷害);
+                    音效.播放音效("盟友攻擊");
+                    戰鬥日誌.append("\n✧　" + 同伴.獲取名稱() + " 協同攻擊，造成 " + 傷害 + " 點傷害！");
+                } else {
+                    int 傷害 = 敵人.攻擊();
+                    玩家.受到傷害(傷害);
+                    音效.播放音效("受擊");
+                    戰鬥日誌.append("\n☠　" + 敵人.獲取名稱() + " 反擊，造成 " + 傷害 + " 點傷害。");
+                }
                 更新戰鬥生命條(敵人);
-            } else if (!已造成傷害[0] && 戰鬥動畫階段 == 2 && 戰鬥動畫進度 >= 0.55) {
-                已造成傷害[0] = true;
-                int 傷害 = 敵人.攻擊();
-                玩家.受到傷害(傷害);
-                音效.播放音效("受擊");
-                戰鬥日誌.append("\n☠　" + 敵人.獲取名稱() + " 反擊，造成 " + 傷害 + " 點傷害。");
-                更新戰鬥生命條(敵人);
+                戰鬥日誌.setCaretPosition(戰鬥日誌.getDocument().getLength());
             }
             戰鬥場景.repaint();
-            戰鬥日誌.setCaretPosition(戰鬥日誌.getDocument().getLength());
 
-            if (戰鬥動畫進度 >= 1 && 戰鬥動畫階段 == 1) {
-                if (敵人.獲取生命() <= 0) {
-                    停止戰鬥動畫();
-                    玩家.增加金幣(敵人.掉落());
-                    更新主畫面資訊();
-                    戰鬥日誌.append("\n✦　擊敗 " + 敵人.獲取名稱() + "！獲得 " + 敵人.掉落() + " 金幣。");
-                    顯示戰鬥結局(true);
-                } else {
-                    戰鬥動畫階段 = 2;
-                    戰鬥動畫進度 = 0;
-                    已造成傷害[0] = false;
-                    音效.播放音效("敵方攻擊");
-                }
-            } else if (戰鬥動畫進度 >= 1 && 戰鬥動畫階段 == 2) {
+            if (戰鬥動畫進度 >= 1) {
                 停止戰鬥動畫();
-                if (玩家.獲取生命() <= 0) {
+                if (階段 == 1 || 階段 == 4) {
+                    if (敵人.獲取生命() <= 0) {
+                        結算戰鬥勝利(敵人);
+                    } else if (階段 == 1 && !盟友列表.isEmpty()) {
+                        盟友攻擊索引 = 0;
+                        開始盟友協戰(敵人, 行動按鈕, 逃跑按鈕);
+                    } else if (階段 == 4 && ++盟友攻擊索引 < 盟友列表.size()) {
+                        開始盟友協戰(敵人, 行動按鈕, 逃跑按鈕);
+                    } else {
+                        開始敵人回合(敵人, 行動按鈕, 逃跑按鈕);
+                    }
+                } else if (玩家.獲取生命() <= 0) {
                     戰鬥日誌.append("\n你已被擊敗……");
                     顯示戰鬥結局(false);
                 } else {
                     戰鬥動畫階段 = 0;
                     戰鬥日誌.append("\n\n你的回合。");
-                    攻擊按鈕.setEnabled(true);
+                    設定戰鬥行動可用(行動按鈕, true);
                     逃跑按鈕.setEnabled(true);
                 }
             }
         });
         戰鬥動畫計時器.start();
+    }
+
+    private void 開始盟友協戰(敵人 敵人, List<JButton> 行動按鈕, JButton 逃跑按鈕) {
+        戰鬥動畫階段 = 4;
+        戰鬥動畫進度 = 0;
+        音效.播放音效("盟友攻擊");
+        戰鬥日誌.append("\n✧　" + 盟友列表.get(盟友攻擊索引).獲取名稱() + " 衝上前線！");
+        開始戰鬥動畫階段(4, 敵人, 行動按鈕, 逃跑按鈕);
+    }
+
+    private void 開始敵人回合(敵人 敵人, List<JButton> 行動按鈕, JButton 逃跑按鈕) {
+        戰鬥日誌.append(敵人.是否魔王() ? "\n☠　魔王凝聚黑炎，發動攻擊！" : "\n☠　敵人發動反擊！");
+        音效.播放音效("敵方攻擊");
+        開始戰鬥動畫階段(2, 敵人, 行動按鈕, 逃跑按鈕);
+    }
+
+    private String 攻擊方式圖示(String 攻擊方式) {
+        if ("遠程".equals(攻擊方式) || "奧術箭".equals(攻擊方式)) {
+            return "➶";
+        }
+        return "⚔";
+    }
+
+    private String 使用攻擊描述(String 攻擊方式) {
+        switch (攻擊方式) {
+            case "遠程": return "拉弓射出箭矢";
+            case "烈焰斬": return "施展烈焰斬";
+            case "奧術箭": return "吟唱並釋放奧術箭";
+            default: return "衝上前揮出一劍";
+        }
+    }
+
+    private void 設定戰鬥行動可用(List<JButton> 行動按鈕, boolean 可用) {
+        for (JButton 按鈕 : 行動按鈕) {
+            按鈕.setEnabled(可用);
+        }
+    }
+
+    private void 結算戰鬥勝利(敵人 敵人) {
+        停止戰鬥動畫();
+        玩家.增加金幣(敵人.掉落());
+        最後獲得經驗 = 敵人.是否魔王() ? 260 : 55;
+        最後升級數 = 玩家.獲得經驗(最後獲得經驗);
+        if (敵人.是否魔王()) {
+            魔王已擊敗 = true;
+        }
+        更新主畫面資訊();
+        戰鬥日誌.append("\n✦　擊敗 " + 敵人.獲取名稱() + "！獲得 " + 敵人.掉落()
+                + " 金幣與 " + 最後獲得經驗 + " 經驗。");
+        if (最後升級數 > 0) {
+            戰鬥日誌.append("\n★　升級了！現在是 Lv." + 玩家.獲取等級()
+                    + "，生命與攻擊力已提升。");
+            if (玩家.獲取等級() >= 3 && 玩家.獲取等級() - 最後升級數 < 3) {
+                戰鬥日誌.append("\n✹　解鎖技能：烈焰斬！");
+            }
+            if (玩家.獲取等級() >= 5 && 玩家.獲取等級() - 最後升級數 < 5) {
+                戰鬥日誌.append("\n✧　解鎖技能：奧術箭！");
+            }
+        }
+        顯示戰鬥結局(true);
     }
 
     private void 更新戰鬥生命條(敵人 敵人) {
@@ -807,7 +1051,10 @@ class 遊戲框架 {
         標題.setForeground(勝利 ? 金色 : 文字色);
         標題.setFont(new Font("微軟正黑體", Font.BOLD, 34));
         JLabel 說明 = new JLabel(勝利
-                ? "你戰勝了 " + 當前敵人.獲取名稱() + "，帶著戰利品繼續前行。"
+                ? "你戰勝了 " + 當前敵人.獲取名稱() + "，獲得 " + 最後獲得經驗 + " 經驗與 "
+                        + 當前敵人.掉落() + " 金幣。"
+                        + (最後升級數 > 0 ? "　升至 Lv." + 玩家.獲取等級() + "！" : "")
+                        + (當前敵人.是否魔王() ? "　魔王已被討伐！" : "")
                 : "你倒在邊境的迷霧中。重新整裝，再次出發吧。",
                 JLabel.CENTER);
         說明.setForeground(柔和文字色);
@@ -915,6 +1162,7 @@ class 遊戲框架 {
                     case "哥布林": 魔物色 = new Color(117, 184, 116); break;
                     case "骷髏兵": 魔物色 = new Color(210, 206, 181); break;
                     case "巨狼": 魔物色 = new Color(148, 160, 181); break;
+                    case "魔王・夜燼": 魔物色 = new Color(189, 68, 105); break;
                     default: 魔物色 = new Color(162, 124, 208);
                 }
                 g2.setPaint(new GradientPaint(0, 0, new Color(37, 45, 70), 0, h, new Color(20, 26, 42)));
@@ -924,6 +1172,7 @@ class 遊戲框架 {
                 int 玩家X = w / 2 - Math.min(205, w / 4);
                 int 敵人X = w / 2 + Math.min(205, w / 4);
                 double 英雄突進 = 戰鬥動畫階段 == 1
+                        && ("近戰".equals(當前攻擊方式) || "烈焰斬".equals(當前攻擊方式))
                         ? Math.sin(Math.min(1, 戰鬥動畫進度) * Math.PI) * 92 : 0;
                 double 魔物突進 = 戰鬥動畫階段 == 2
                         ? Math.sin(Math.min(1, 戰鬥動畫進度) * Math.PI) * 62 : 0;
@@ -950,6 +1199,14 @@ class 遊戲框架 {
                 g2.fillOval(玩家X - 56, cy + 64, 112, 19);
                 g2.fillOval(敵人X - 70, cy + 70, 140, 20);
                 繪製主角(g2, (int) (玩家X + 英雄突進), cy, 時間);
+                for (int i = 0; i < 盟友列表.size(); i++) {
+                    int 同伴X = 玩家X - 62 - (i % 2) * 38;
+                    int 同伴Y = cy - 48 + (i / 2) * 44;
+                    double 同伴突進 = 戰鬥動畫階段 == 4 && i == 盟友攻擊索引
+                            ? Math.sin(Math.min(1, 戰鬥動畫進度) * Math.PI) * 125 : 0;
+                    繪製盟友戰鬥角色(g2, (int) (同伴X + 同伴突進), 同伴Y,
+                            時間 + i * 0.6, i);
+                }
 
                 Graphics2D 魔物畫筆 = (Graphics2D) g2.create();
                 float 透明度 = (float) Math.min(1, Math.max(0, 入場比例));
@@ -958,8 +1215,9 @@ class 遊戲框架 {
                 魔物畫筆.scale(入場比例, 入場比例);
                 魔物畫筆.setColor(MonsterAlpha(魔物色, 45));
                 魔物畫筆.fill(new Ellipse2D.Double(-70, -88, 140, 150));
-                魔物畫筆.setColor(戰鬥動畫階段 == 1 && 戰鬥動畫進度 > 0.42
-                        && 戰鬥動畫進度 < 0.68 ? new Color(255, 235, 205) : 魔物色);
+                魔物畫筆.setColor((戰鬥動畫階段 == 1 || 戰鬥動畫階段 == 4)
+                        && 戰鬥動畫進度 > 0.42 && 戰鬥動畫進度 < 0.68
+                        ? new Color(255, 235, 205) : 魔物色);
                 魔物畫筆.fill(new RoundRectangle2D.Double(-48, -30, 96, 104, 35, 38));
                 魔物畫筆.fillOval(-54, -92, 108, 91);
                 if (!"骷髏兵".equals(敵人.獲取名稱())) {
@@ -977,9 +1235,29 @@ class 遊戲框架 {
                 魔物畫筆.drawArc(-17, -23, 34, 20, 200, 140);
                 魔物畫筆.dispose();
 
-                if (戰鬥動畫階段 == 1 && 戰鬥動畫進度 > 0.32 && 戰鬥動畫進度 < 0.86) {
+                if (戰鬥動畫階段 == 1
+                        && ("遠程".equals(當前攻擊方式) || "奧術箭".equals(當前攻擊方式))) {
+                    double p = 戰鬥動畫進度;
+                    int projectileX = (int) (玩家X + 55 + (敵人X - 玩家X - 105) * p);
+                    int projectileY = (int) (cy - 28 - Math.sin(Math.PI * p) * 105);
+                    Color projectileColor = "奧術箭".equals(當前攻擊方式)
+                            ? new Color(183, 142, 255) : new Color(154, 218, 255);
+                    g2.setColor(new Color(projectileColor.getRed(), projectileColor.getGreen(),
+                            projectileColor.getBlue(), 70));
+                    g2.fill(new Ellipse2D.Double(projectileX - 17, projectileY - 17, 34, 34));
+                    g2.setColor(projectileColor);
+                    g2.fill(new Ellipse2D.Double(projectileX - 7, projectileY - 7, 14, 14));
+                    g2.setStroke(new BasicStroke(3, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                    g2.drawLine(projectileX - 28, projectileY + 10, projectileX - 7, projectileY);
+                }
+                if (戰鬥動畫階段 == 1
+                        && ("近戰".equals(當前攻擊方式) || "烈焰斬".equals(當前攻擊方式))
+                        && 戰鬥動畫進度 > 0.32 && 戰鬥動畫進度 < 0.86) {
                     float alpha = (float) Math.sin((戰鬥動畫進度 - 0.32) / 0.54 * Math.PI);
-                    g2.setColor(new Color(255, 234, 162, (int) (220 * alpha)));
+                    Color slashColor = "烈焰斬".equals(當前攻擊方式)
+                            ? new Color(255, 126, 67, 220) : new Color(255, 234, 162, 220);
+                    g2.setColor(new Color(slashColor.getRed(), slashColor.getGreen(),
+                            slashColor.getBlue(), (int) (220 * alpha)));
                     g2.setStroke(new BasicStroke(5, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
                     int 起點X = 玩家X + 45;
                     int 目標X = 敵人X - 48;
@@ -987,6 +1265,15 @@ class 遊戲框架 {
                     g2.drawLine(起點X, 刀光Y + 45, 目標X, 刀光Y - 38);
                     g2.setStroke(new BasicStroke(1.5f));
                     g2.drawLine(起點X + 8, 刀光Y + 52, 目標X + 4, 刀光Y - 31);
+                }
+                if (戰鬥動畫階段 == 4 && 戰鬥動畫進度 > 0.12 && 戰鬥動畫進度 < 0.78) {
+                    float alpha = (float) Math.sin(戰鬥動畫進度 * Math.PI);
+                    g2.setColor(new Color(255, 230, 150, (int) (200 * alpha)));
+                    g2.setStroke(new BasicStroke(3, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                    int startX = 玩家X - 62 - (盟友攻擊索引 % 2) * 38 + 16;
+                    int targetX = 敵人X - 45;
+                    int strikeY = cy - 34 + (int) (戰鬥動畫進度 * 42);
+                    g2.drawLine(startX, strikeY + 24, targetX, strikeY - 20);
                 }
                 if (戰鬥動畫階段 == 2 && 戰鬥動畫進度 > 0.48 && 戰鬥動畫進度 < 0.74) {
                     g2.setColor(new Color(255, 104, 99, 145));
@@ -1027,20 +1314,61 @@ class 遊戲框架 {
         g2.setColor(new Color(37, 42, 59));
         g2.fillOval(x - 13, y - 49 + 呼吸, 4, 5);
         g2.fillOval(x + 9, y - 49 + 呼吸, 4, 5);
-        g2.setColor(new Color(170, 190, 218));
-        g2.setStroke(new BasicStroke(9, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        g2.drawLine(x + 14, y + 3 + 呼吸, x + 39, y - 18 + 呼吸);
-        double 劍角 = 戰鬥動畫階段 == 1 ? -0.75 + 戰鬥動畫進度 * 1.6 : -0.35;
-        int 劍柄X = x + 38;
-        int 劍柄Y = y - 17 + 呼吸;
-        int 劍尖X = 劍柄X + (int) (Math.cos(劍角) * 66);
-        int 劍尖Y = 劍柄Y + (int) (Math.sin(劍角) * 66);
-        g2.setColor(new Color(201, 168, 105));
-        g2.setStroke(new BasicStroke(5, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        g2.drawLine(劍柄X - 7, 劍柄Y + 3, 劍柄X + 7, 劍柄Y - 3);
-        g2.setColor(new Color(220, 232, 247));
-        g2.setStroke(new BasicStroke(4, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        g2.drawLine(劍柄X, 劍柄Y, 劍尖X, 劍尖Y);
+        if ("遠程".equals(當前攻擊方式) || "奧術箭".equals(當前攻擊方式)) {
+            g2.setColor(new Color(170, 133, 95));
+            g2.setStroke(new BasicStroke(4, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g2.drawArc(x + 23, y - 42 + 呼吸, 31, 56, -90, 180);
+            g2.setColor(new Color(225, 214, 190));
+            g2.setStroke(new BasicStroke(1.5f));
+            g2.drawLine(x + 39, y - 40 + 呼吸, x + 39, y + 12 + 呼吸);
+            g2.setColor(new Color(230, 231, 245));
+            g2.setStroke(new BasicStroke(3, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g2.drawLine(x + 28, y - 16 + 呼吸, x + 68, y - 16 + 呼吸);
+            if ("奧術箭".equals(當前攻擊方式)) {
+                g2.setColor(new Color(180, 138, 255, 190));
+                g2.fill(new Ellipse2D.Double(x + 48, y - 26 + 呼吸, 19, 19));
+            }
+        } else {
+            g2.setColor(new Color(170, 190, 218));
+            g2.setStroke(new BasicStroke(9, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g2.drawLine(x + 14, y + 3 + 呼吸, x + 39, y - 18 + 呼吸);
+            double 劍角 = 戰鬥動畫階段 == 1 ? -0.75 + 戰鬥動畫進度 * 1.6 : -0.35;
+            int 劍柄X = x + 38;
+            int 劍柄Y = y - 17 + 呼吸;
+            int 劍尖X = 劍柄X + (int) (Math.cos(劍角) * 66);
+            int 劍尖Y = 劍柄Y + (int) (Math.sin(劍角) * 66);
+            g2.setColor(new Color(201, 168, 105));
+            g2.setStroke(new BasicStroke(5, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g2.drawLine(劍柄X - 7, 劍柄Y + 3, 劍柄X + 7, 劍柄Y - 3);
+            g2.setColor(new Color(220, 232, 247));
+            g2.setStroke(new BasicStroke(4, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g2.drawLine(劍柄X, 劍柄Y, 劍尖X, 劍尖Y);
+        }
+    }
+
+    private void 繪製盟友戰鬥角色(Graphics2D g2, int x, int y, double 時間, int index) {
+        int bob = (int) (Math.sin(時間 * 3.5) * 3);
+        Color[] colors = {
+                new Color(112, 183, 147), new Color(183, 139, 211),
+                new Color(209, 157, 111), new Color(107, 159, 207), new Color(199, 111, 130)
+        };
+        Color outfit = colors[index % colors.length];
+        g2.setColor(new Color(13, 18, 30));
+        g2.fillOval(x - 20, y + 43, 42, 9);
+        g2.setColor(outfit);
+        g2.fillRoundRect(x - 17, y - 9 + bob, 34, 57, 14, 16);
+        g2.setColor(new Color(226, 190, 151));
+        g2.fillOval(x - 16, y - 43 + bob, 32, 34);
+        g2.setColor(new Color(58, 46, 48));
+        g2.fillArc(x - 17, y - 47 + bob, 34, 22, 0, 180);
+        g2.setColor(new Color(38, 42, 56));
+        g2.fillOval(x - 9, y - 29 + bob, 3, 4);
+        g2.fillOval(x + 5, y - 29 + bob, 3, 4);
+        if (戰鬥動畫階段 == 4 && index == 盟友攻擊索引) {
+            g2.setColor(new Color(237, 222, 188));
+            g2.setStroke(new BasicStroke(4, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g2.drawLine(x + 10, y + 1 + bob, x + 28, y - 16 + bob);
+        }
     }
 
     private void 更新狀態(String 狀態) {
@@ -1061,29 +1389,47 @@ class 遊戲框架 {
 class 玩家 {
     private String 名稱;
     private int 生命;
+    private int 最大生命;
     private int 攻擊力;
     private int 防禦力;
     private int 金幣;
+    private int 等級;
+    private int 經驗;
+    private String 武器名稱;
+    private int 武器攻擊加成;
+    private boolean 武器適合遠程;
 
     public 玩家(String 名稱) {
         this.名稱 = 名稱;
-        this.生命 = 100;
+        this.最大生命 = 100;
+        this.生命 = 最大生命;
         this.攻擊力 = 10;
         this.防禦力 = 5;
         this.金幣 = 50;
+        this.等級 = 1;
+        this.經驗 = 0;
+        this.武器名稱 = "訓練短劍";
     }
 
     public int 攻擊() {
-        return 攻擊力 + new Random().nextInt(5);  // 隨機傷害範圍
+        return 攻擊(false, 1);
+    }
+
+    public int 攻擊(boolean 遠程, double 倍率) {
+        int 武器加成 = 遠程
+                ? (武器適合遠程 ? 武器攻擊加成 : 0)
+                : (武器適合遠程 ? Math.max(0, 武器攻擊加成 / 2) : 武器攻擊加成);
+        int 基礎傷害 = 攻擊力 + 武器加成 + new Random().nextInt(5);
+        return Math.max(1, (int) Math.round(基礎傷害 * 倍率));
     }
 
     public void 受到傷害(int 傷害) {
-        int 實際傷害 = Math.max(0, 傷害 - 防禦力); // 防禦減少傷害
-        this.生命 -= 實際傷害;
+        int 實際傷害 = Math.max(0, 傷害 - 防禦力);
+        this.生命 = Math.max(0, 生命 - 實際傷害);
     }
 
     public void 增加生命(int 數量) {
-        this.生命 += 數量;
+        this.生命 = Math.min(最大生命, 生命 + 數量);
     }
 
     public void 增加金幣(int 數量) {
@@ -1094,12 +1440,70 @@ class 玩家 {
         this.攻擊力 += 數量;
     }
 
+    public void 裝備武器(String 名稱, int 攻擊加成, boolean 遠程) {
+        武器名稱 = 名稱;
+        武器攻擊加成 = 攻擊加成;
+        武器適合遠程 = 遠程;
+    }
+
+    public int 獲得經驗(int 數量) {
+        經驗 += 數量;
+        int 升級數 = 0;
+        while (經驗 >= 升級所需經驗()) {
+            經驗 -= 升級所需經驗();
+            等級++;
+            升級數++;
+            最大生命 += 12;
+            生命 = Math.min(最大生命, 生命 + 25);
+            攻擊力 += 2;
+            if (等級 % 2 == 0) {
+                防禦力++;
+            }
+        }
+        return 升級數;
+    }
+
+    public int 升級所需經驗() {
+        return 80 + (等級 - 1) * 55;
+    }
+
+    public int 獲取經驗() {
+        return 經驗;
+    }
+
+    public int 獲取等級() {
+        return 等級;
+    }
+
+    public int 魔王出現等級() {
+        return 5;
+    }
+
+    public String 獲取武器名稱() {
+        return 武器名稱;
+    }
+
+    public String 顯示技能列表() {
+        List<String> 技能 = new ArrayList<>();
+        if (等級 >= 3) {
+            技能.add("烈焰斬 (Lv.3)");
+        }
+        if (等級 >= 5) {
+            技能.add("奧術箭 (Lv.5)");
+        }
+        return 技能.isEmpty() ? "尚未解鎖" : String.join("、", 技能);
+    }
+
     public void 增加防禦力(int 數量) {
         this.防禦力 += 數量;
     }
 
     public int 獲取生命() {
         return 生命;
+    }
+
+    public int 獲取最大生命() {
+        return 最大生命;
     }
 
     public int 獲取金幣() {
@@ -1116,7 +1520,8 @@ class 玩家 {
 
     @Override
     public String toString() {
-        return "名稱: " + 名稱 + "\n生命: " + 生命 + "\n攻擊力: " + 攻擊力 + "\n防禦力: " + 防禦力 + "\n金幣: " + 金幣;
+        return "名稱: " + 名稱 + "\n等級: " + 等級 + "\n生命: " + 生命 + "/" + 最大生命
+                + "\n攻擊力: " + 攻擊力 + "\n防禦力: " + 防禦力 + "\n武器: " + 武器名稱 + "\n金幣: " + 金幣;
     }
 }
 
@@ -1126,12 +1531,18 @@ class 敵人 {
     private int 生命;
     private int 攻擊力;
     private int 價值;
+    private boolean 魔王;
 
     public 敵人(String 類型, int 生命, int 攻擊力, int 價值) {
+        this(類型, 生命, 攻擊力, 價值, false);
+    }
+
+    public 敵人(String 類型, int 生命, int 攻擊力, int 價值, boolean 魔王) {
         this.類型 = 類型;
         this.生命 = 生命;
         this.攻擊力 = 攻擊力;
         this.價值 = 價值;
+        this.魔王 = 魔王;
     }
 
     public int 攻擊() {
@@ -1139,7 +1550,7 @@ class 敵人 {
     }
 
     public void 受到傷害(int 傷害) {
-        this.生命 -= 傷害;
+        this.生命 = Math.max(0, 生命 - 傷害);
     }
 
     public int 獲取生命() {
@@ -1152,6 +1563,10 @@ class 敵人 {
 
     public int 掉落(){
         return 價值;
+    }
+
+    public boolean 是否魔王() {
+        return 魔王;
     }
 
     @Override
@@ -1172,6 +1587,10 @@ class 盟友 {
 
     public String 獲取名稱(){
         return 名字;
+    }
+
+    public int 攻擊() {
+        return 攻擊力 + new Random().nextInt(4);
     }
 
     @Override
@@ -1271,6 +1690,9 @@ class 遊戲音效 {
                     case "遭遇": 音符 = new int[]{220, 185, 147, 110}; 音符長度 = 130; 音量 = 0.24; break;
                     case "戰鬥進場": 音符 = new int[]{330, 440, 554}; 音符長度 = 170; break;
                     case "揮劍": 音符 = new int[]{760, 420, 920}; 音符長度 = 55; 音量 = 0.2; break;
+                    case "弓箭": 音符 = new int[]{720, 980, 640}; 音符長度 = 65; 音量 = 0.18; break;
+                    case "魔法": 音符 = new int[]{440, 660, 880}; 音符長度 = 120; 音量 = 0.2; break;
+                    case "盟友攻擊": 音符 = new int[]{590, 790}; 音符長度 = 70; 音量 = 0.16; break;
                     case "命中": 音符 = new int[]{185, 125, 250}; 音符長度 = 65; 音量 = 0.25; break;
                     case "敵方攻擊": 音符 = new int[]{196, 147, 110}; 音符長度 = 105; break;
                     case "受擊": 音符 = new int[]{260, 185, 140}; 音符長度 = 90; break;

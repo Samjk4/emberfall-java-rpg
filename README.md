@@ -23,11 +23,17 @@ The game opens as a desktop window. Enter a character name to begin; if left bla
 
 - Dark-fantasy home screen and custom-painted battle scenes
 - Animated exploration scenes for treasure, allies, quiet encounters, and monsters
-- Turn-based combat with a swinging-sword animation, health bars, and battle log
+- Animated treasure coins and a waving, arriving ally
+- Turn-based party combat: allies attack alongside the hero
+- Melee and ranged combat, plus level-unlocked special skills
+- Experience, levels, stat growth, and a level-gated final boss
+- A custom equipment shop with several swords, a bow, a staff, armor, and healing
+- Turn-based combat with animated attacks, health bars, and battle log
 - Synthesized battle sound effects and looping background music, with a music toggle
 - Dedicated animated victory and defeat screens
 - Custom character-creation screen
 - Random exploration encounters, allies, and gold
-- Shop for health, attack, and defense upgrades
+- Defeat monsters to earn experience; unlock Flame Slash at level 3 and Arcane Arrow at level 5
+- Challenge the Demon King once you reach level 5
 
 The game generates music and sound effects through the Java Sound API. If the computer has no available audio output, the game displays a warning and remains playable.

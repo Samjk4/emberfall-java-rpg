@@ -1,39 +1,73 @@
-# Emberfall Java RPG
+# Emberfall：迷霧邊境
 
-A Chinese-language fantasy RPG built with Java Swing. Explore the Mistbound Frontier, encounter monsters, earn gold, recruit allies, and prepare for turn-based battles.
+一款以 **Java Swing** 製作的繁體中文奇幻 RPG。探索迷霧邊境、開啟寶箱、招募盟友、強化武器，帶領隊伍迎戰魔物，逐步成長到挑戰魔王。
 
-All visuals and audio are drawn or synthesized by the game at runtime; no external asset files are required.
+遊戲畫面、動畫、背景音樂與音效皆由程式即時繪製或合成，不需要另外下載素材。
 
-## Requirements
+## 遊戲特色
 
-- JDK 8 or later
+- **奇幻冒險事件**：探索時可能找到寶箱、遇見盟友、遭遇魔物，或在邊境中平靜地走一段路。事件有專屬動畫與音效，寶箱會顯示飛出的金幣，盟友會走入並揮手加入隊伍。
+- **隊伍戰鬥**：最多招募五位盟友。戰鬥時主角和盟友會依序攻擊敵人。
+- **多種攻擊方式**：使用近戰武器攻擊，或裝備長弓、法杖施展遠程攻擊；攻擊附有動畫與音效。
+- **經驗與等級**：擊敗魔物取得經驗，升級後提高生命與攻擊力，偶數等級還會提升防禦力。
+- **等級技能**：Lv.3 解鎖「烈焰斬」，Lv.5 解鎖「奧術箭」。
+- **裝備商店**：購買騎士長劍、燼火巨刃、月影長弓、星隕法杖、龍鱗護甲與生命藥水，增強戰鬥能力。
+- **魔王決戰**：到達 Lv.5 後，下一次探索將觸發魔王「夜燼」的決戰。擊敗魔王即可完成主要冒險。
+- **沉浸式視聽效果**：探索、戰鬥、勝利和失敗都有不同動畫及合成音效；背景音樂可在主畫面開關。
 
-## Run
+## 系統需求
 
-From this directory, compile and launch the game:
+- JDK 8 或更新版本
+- 支援 Java Swing 的桌面環境
+
+音訊由 Java Sound API 即時產生。若系統沒有可用的音訊輸出裝置，遊戲會提示音訊無法播放，但仍可繼續遊玩。
+
+## 執行方式
+
+在 Windows PowerShell 或終端機切換至 `Main.java` 所在資料夾，編譯並啟動：
 
 ```powershell
 javac -encoding UTF-8 Main.java
 java Main
 ```
 
-The game opens as a desktop window. Enter a character name to begin; if left blank, the default name is `勇者`.
+啟動後輸入角色名稱即可開始；若留空或取消，會以「勇者」作為預設名稱。
 
-## Features
+## 主要操作
 
-- Dark-fantasy home screen and custom-painted battle scenes
-- Animated exploration scenes for treasure, allies, quiet encounters, and monsters
-- Animated treasure coins and a waving, arriving ally
-- Turn-based party combat: allies attack alongside the hero
-- Melee and ranged combat, plus level-unlocked special skills
-- Experience, levels, stat growth, and a level-gated final boss
-- A custom equipment shop with several swords, a bow, a staff, armor, and healing
-- Turn-based combat with animated attacks, health bars, and battle log
-- Synthesized battle sound effects and looping background music, with a music toggle
-- Dedicated animated victory and defeat screens
-- Custom character-creation screen
-- Random exploration encounters, allies, and gold
-- Defeat monsters to earn experience; unlock Flame Slash at level 3 and Arcane Arrow at level 5
-- Challenge the Demon King once you reach level 5
+| 畫面 | 操作 |
+|---|---|
+| 公會主畫面 | 選擇探索、查看冒險者檔案、進入商店或切換背景音樂 |
+| 探索事件 | 觀看事件動畫後按「繼續旅程」；遇到魔物時會自動進入戰鬥 |
+| 戰鬥畫面 | 選擇近戰、遠程攻擊，或使用已解鎖的技能；也可撤退 |
+| 商店 | 點選商品卡片購買；購買的武器會立即裝備 |
+| 結局畫面 | 勝利後返回公會；戰敗後可重新開始 |
 
-The game generates music and sound effects through the Java Sound API. If the computer has no available audio output, the game displays a warning and remains playable.
+## 升級與技能
+
+每次升級所需經驗會隨等級增加。一般魔物提供 55 點經驗，魔王提供 260 點經驗。
+
+| 解鎖等級 | 技能 | 效果 |
+|---|---|---|
+| Lv.3 | 烈焰斬 | 以火焰強力斬擊敵人 |
+| Lv.5 | 奧術箭 | 發射強力魔法箭矢 |
+
+## 商店商品
+
+| 商品 | 價格 | 效果 |
+|---|---:|---|
+| 生命藥水 | 30 金幣 | 恢復 35 點生命 |
+| 騎士長劍 | 75 金幣 | 近戰攻擊力 +6 |
+| 燼火巨刃 | 145 金幣 | 近戰攻擊力 +12 |
+| 月影長弓 | 155 金幣 | 遠程攻擊力 +9 |
+| 星隕法杖 | 260 金幣 | 遠程攻擊力 +16 |
+| 龍鱗護甲 | 120 金幣 | 防禦力 +5 |
+
+## 專案結構
+
+```text
+emberfall-java-rpg/
+├── Main.java      # 遊戲程式
+├── README.md      # 專案與執行說明
+└── .gitignore     # 忽略 Java 編譯產物
+```
